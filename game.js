@@ -6,6 +6,10 @@ function draw_from_camera(x, y, sx, sy){
     context.fillRect(x-cameraX+canvas.width/2-sx/2, y-cameraY+canvas.height/2-sy/2, sx, sy);
 }
 function drw_img(img, x, y, sx, sy, alpha){
+    if (alpha==0){
+        context.drawImage(img, x-cameraX+canvas.width/2-sx/2, y-cameraY+canvas.height/2-sy/2, sx, sy);
+        return;
+    }
     context.save();
     context.translate(x-cameraX+canvas.width/2, y-cameraY+canvas.height/2);
     context.rotate(alpha);
@@ -29,8 +33,9 @@ class Platform{
         this.y = y;
         this.oldy = this.y;
         this.sx = sx;
-        this.sy = 10;
-        this.color = 'green';
+        this.sy = 40;
+        this.img = new Image();
+        this.img.src = 'platform.png';
     }
     move(){
         this.oldx = this.x;
@@ -38,7 +43,7 @@ class Platform{
     }
     draw(){
         context.fillStyle = this.color;
-        draw_from_camera(this.x, this.y, this.sx, this.sy);
+        drw_img(this.img, this.x, this.y, this.sx*1.2, this.sy*1.7, 0);
     }
 };
 
@@ -61,28 +66,33 @@ class MovingPlatform extends Platform{
     }
 }
 
-var np = 1000
+var np = 200
 var plats = [];
 for (let i=0; i<np; ++i){
-    let x = Math.floor(Math.random()*terrainX/200)*200;
-    let y = Math.floor(Math.random()*terrainY/100)*100;
+    let x = Math.floor(Math.random()*terrainX/450)*450;
+    let y = Math.floor(Math.random()*terrainY/200)*200;
     if (Math.random()<0.2)
-        plats[i] = new MovingPlatform(x, y, 150, x+(Math.floor(Math.random()*3)-1)*200, y+(Math.floor(Math.random()*3)-1)*100, Math.random()*100+200);
+        plats[i] = new MovingPlatform(x, y, 400, x+(Math.floor(Math.random()*3)-1)*450, y+(Math.floor(Math.random()*3)-1)*200, Math.random()*100+200);
     else
-        plats[i] = new Platform(x, y, 150);
+        plats[i] = new Platform(x, y, 400);
 }
 
 class Player{
     constructor(){
         this.x = cameraX;
         this.y = cameraY;
-        this.sx = 20;
-        this.sy = 50;
+        this.sx = 40;
+        this.sy = 70;
         this.color = 'blue';
         this.dy = 0;
         this.step = -1;
         this.health = 100;
         this.inv = 0;
+        this.img = [new Image(), new Image(), new Image()];
+        this.img_flip = [new Image(), new Image(), new Image()];
+        this.img[0].src = 'hero0.png'; this.img[1].src = 'hero1.png'; this.img[2].src = 'hero2.png';
+        this.img_flip[0].src = 'hero0_flipped.png'; this.img_flip[1].src = 'hero1_flipped.png'; this.img_flip[2].src = 'hero2_flipped.png';
+        this.img_ind = 0;
     }
     jump(){
         if (this.health <= 0) return;
@@ -131,6 +141,11 @@ class Player{
         }else{
             this.x += plats[this.step].x - plats[this.step].oldx;
             this.y += plats[this.step].y - plats[this.step].oldy;
+            if (isKeyPressed[65] || isKeyPressed[68]){
+                this.img_ind = (this.img_ind+1)%(this.img.length*10);
+            }else{
+                this.img_ind = 0;
+            }
         }
         if (isKeyPressed[65]) this.x -= 5;
         if (isKeyPressed[68]) this.x += 5;
@@ -152,7 +167,19 @@ class Player{
         context.fillStyle = 'rgba(0, 0, 255, 0.5)';
         draw_from_camera(this.x, this.y-this.sy/2-20, this.health, 10);
         if (this.inv%2==0) context.fillStyle = this.color;
-        draw_from_camera(this.x, this.y, this.sx, this.sy);
+        if (mouseX >= canvas.width/2){
+            if (this.step==-1){
+                drw_img(this.img[1], this.x, this.y, this.sx, this.sy, 0);
+            }else{
+                drw_img(this.img[Math.floor(this.img_ind/10)], this.x, this.y, this.sx, this.sy, 0);
+            }
+        }else{
+            if (this.step==-1){
+                drw_img(this.img_flip[1], this.x, this.y, this.sx, this.sy, 0);
+            }else{
+                drw_img(this.img_flip[Math.floor(this.img_ind/10)], this.x, this.y, this.sx, this.sy, 0);
+            }
+        }
     }
 }
 
@@ -164,7 +191,8 @@ class Enemy{
         this.y=y;
         this.sx = 30;
         this.sy = 30;
-        this.color = 'red';
+        this.img = new Image();
+        this.img.src = 'enemy.png';
         this.speed = 4;
         this.health = 2;
     }
@@ -182,8 +210,7 @@ class Enemy{
         if (coll(this, player)) player.hit(1);
     }
     draw(){
-        context.fillStyle = this.color;
-        draw_from_camera(this.x, this.y, this.sx, this.sy);
+        drw_img(this.img, this.x, this.y, this.sx, this.sy, 0);
     }
 }
 
@@ -311,9 +338,11 @@ function update() {
     }
 }
 
+var background = new Image();
+background.src = 'background.jpg'
+
 function draw() {
-    context.fillStyle = 'black';
-    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(background, -cameraX/terrainX*canvas.width, -cameraY/terrainY*canvas.height, canvas.width*2, canvas.height*2);
     for (let i=0; i<np; ++i){
         plats[i].draw();
     }
