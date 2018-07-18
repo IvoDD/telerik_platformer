@@ -228,9 +228,11 @@ class Bullet{
         this.sx = sx;
         this.sy = sy;
         let dist = d(x, y, targetX, targetY);
+        //console.log("dist", dist)
         this.dx = (targetX-x)/dist*speed;
         this.dy = (targetY-y)/dist*speed;
         this.alpha = Math.atan2(this.dy, this.dx);
+        this.speed = speed;
         this.img = new Image();
         this.img.src = img;
         this.dmg = dmg;
@@ -259,6 +261,28 @@ class Bullet{
     }
     draw(){
         drw_img(this.img, this.x, this.y, this.sx, this.sy, this.alpha)
+    }
+}
+
+class MultiBullet extends Bullet{
+    constructor(x, y, sx, sy, targetX, targetY, speed, dmg, img, to_split, time_split){
+        super(x, y, sx, sy, targetX, targetY, speed, dmg, img);
+        this.to_split = to_split;
+        this.time_split = time_split;
+        this.curr_time = time_split;
+        //console.log("xy", this.x, this.y);
+        //console.log("txy", targetX, targetY);
+        //console.log("dxy", this.dx, this.dy);
+    }
+    update(){
+        super.update();
+        this.curr_time--;
+        if (this.curr_time <= 0 && this.to_split>0){
+            this.curr_time = this.time_split;
+            --this.to_split;
+            bullets.push( new MultiBullet(this.x, this.y, this.sx, this.sy, this.x+Math.cos(this.alpha+Math.PI/6), this.y+Math.sin(this.alpha+Math.PI/6), this.speed, this.dmg, this.img.src, this.to_split, this.time_split) );
+            bullets.push( new MultiBullet(this.x, this.y, this.sx, this.sy, this.x+Math.cos(this.alpha-Math.PI/6), this.y+Math.sin(this.alpha-Math.PI/6), this.speed, this.dmg, this.img.src, this.to_split, this.time_split) );
+        }
     }
 }
 
@@ -316,11 +340,49 @@ class AK47 extends Weapon{
         this.reaload_time = 5;
     }
 }
-var nw = 20;
+
+class Shotgun extends Weapon{
+    constructor(x, y, held=false){
+        super(x, y, held);
+        this.img.src = 'ak47.png';
+        this.img_flip.src = 'ak47_flip.png';
+        this.sx = 150;
+        this.reaload_time = 50;
+    }
+    shoot(){
+        if (this.held && this.curr_reload==0){
+            let alpha = Math.atan2(mouseY-canvas.height/2+cameraY-this.y, mouseX-canvas.width/2+cameraX-this.x);
+            for (let i=0; i<10; ++i){
+                let cangle = alpha + Math.random()*Math.PI/3-Math.PI/6;
+                bullets.push(new Bullet(this.x, this.y, 20, 10, this.x+Math.cos(cangle), this.y+Math.sin(cangle), 10, 2, 'bullet.png'));
+            }
+            this.curr_reload = this.reaload_time;
+        }
+    }
+}
+
+class MultiGun extends Weapon{
+    constructor(x, y, held=false){
+        super(x, y, held);
+        this.img.src = 'ak47.png';
+        this.img_flip.src = 'ak47_flip.png';
+        this.sy = 100;
+        this.reaload_time = 50;
+    }
+    shoot(){
+        if (this.held && this.curr_reload==0){
+            bullets.push(new MultiBullet(this.x, this.y, 20, 10, mouseX-canvas.width/2+cameraX, mouseY-canvas.height/2+cameraY, 10, 2, 'bullet.png', 25, 5));
+            this.curr_reload = this.reaload_time;
+        }
+    }
+}
+var nw = 100;
 var weapons = [];
 weapons[0] = new Weapon(player.x, player.y, true);
 for (let i=1; i<nw; ++i){
-    weapons[i] = new AK47(Math.random()*terrainX, Math.random()*terrainY);
+    if (i%3==0) weapons[i] = new AK47(Math.random()*terrainX, Math.random()*terrainY);
+    if (i%3==1) weapons[i] = new Shotgun(Math.random()*terrainX, Math.random()*terrainY);
+    if (i%3==2) weapons[i] = new MultiGun(Math.random()*terrainX, Math.random()*terrainY);
 }
 
 function update() {
