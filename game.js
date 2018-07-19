@@ -214,6 +214,35 @@ class Enemy{
     }
 }
 
+class HardEnemy extends Enemy{
+    constructor(x, y){
+        super(x, y);
+        this.health=10;
+        this.sx = 60;
+        this.sy = 60;
+        this.reload_time = 10;
+        this.curr_reload = 0;
+    }
+    update(){
+        let dist = d(player.x, player.y, this.x, this.y);
+        if (this.curr_reload > 0) --this.curr_reload;
+        if (dist < 300){
+            if (this.curr_reload <= 0){
+                bullets.push(new EnemyBullet(this.x, this.y, 20, 10, player.x, player.y, 10, 2, 'bullet.png', bullets.length))
+                this.curr_reload = this.reload_time;
+            }
+        }
+        if (dist<200){
+            this.y += (player.x-this.x)/dist*this.speed;
+            this.x -= (player.y-this.y)/dist*this.speed;
+        }
+        else{
+            this.x += (player.x-this.x)/dist*this.speed;
+            this.y += (player.y-this.y)/dist*this.speed;
+        }
+    }
+}
+
 var ne = 50;
 var enemies = [];
 for (let i=0; i<ne; ++i){
@@ -222,7 +251,7 @@ for (let i=0; i<ne; ++i){
 
 var bullets = [];
 class Bullet{
-    constructor(x, y, sx, sy, targetX, targetY, speed, dmg, img){
+    constructor(x, y, sx, sy, targetX, targetY, speed, dmg, img, ind){
         this.x = x;
         this.y = y;
         this.sx = sx;
@@ -236,9 +265,11 @@ class Bullet{
         this.img = new Image();
         this.img.src = img;
         this.dmg = dmg;
+        this.ind = ind;
     }
     del(){
-        Object.assign(this, bullets[bullets.length-1]);
+        bullets[this.ind] = bullets[bullets.length-1];
+        bullets[this.ind].ind = this.ind;
         bullets.pop();
     }
     update(){
@@ -260,7 +291,31 @@ class Bullet{
         }
     }
     draw(){
-        drw_img(this.img, this.x, this.y, this.sx, this.sy, this.alpha)
+        //drw_img(this.img, this.x, this.y, this.sx, this.sy, this.alpha)
+        context.fillStyle = "blue";
+        draw_from_camera(this.x, this.y, this.sx, this.sy);
+    }
+}
+
+class EnemyBullet extends Bullet{
+    update(){
+        this.x+=this.dx;
+        this.y+=this.dy;
+        if (this.x > terrainX+canvas.width ||
+           this.x < -canvas.width ||
+           this.y > terrainY+canvas.height ||
+           this.y < -canvas.height){
+            this.del();
+            return;
+        }
+        if (coll(this, player)){
+            player.hit(this.dmg);
+            this.del();
+            return;
+        }
+    }
+    draw(){
+        drw_img(this.img, this.x, this.y, this.sx, this.sy, this.alpha);
     }
 }
 
@@ -280,8 +335,8 @@ class MultiBullet extends Bullet{
         if (this.curr_time <= 0 && this.to_split>0){
             this.curr_time = this.time_split;
             --this.to_split;
-            bullets.push( new MultiBullet(this.x, this.y, this.sx, this.sy, this.x+Math.cos(this.alpha+Math.PI/6), this.y+Math.sin(this.alpha+Math.PI/6), this.speed, this.dmg, this.img.src, this.to_split, this.time_split) );
-            bullets.push( new MultiBullet(this.x, this.y, this.sx, this.sy, this.x+Math.cos(this.alpha-Math.PI/6), this.y+Math.sin(this.alpha-Math.PI/6), this.speed, this.dmg, this.img.src, this.to_split, this.time_split) );
+            bullets.push( new MultiBullet(this.x, this.y, this.sx, this.sy, this.x+Math.cos(this.alpha+Math.PI/6), this.y+Math.sin(this.alpha+Math.PI/6), this.speed, this.dmg*0.75, this.img.src, this.to_split, this.time_split, bullets.length) );
+            bullets.push( new MultiBullet(this.x, this.y, this.sx, this.sy, this.x+Math.cos(this.alpha-Math.PI/6), this.y+Math.sin(this.alpha-Math.PI/6), this.speed, this.dmg*0.75, this.img.src, this.to_split, this.time_split, bullets.length) );
         }
     }
 }
@@ -312,7 +367,7 @@ class Weapon{
     }
     shoot(){
         if (this.held && this.curr_reload==0){
-            bullets.push(new Bullet(this.x, this.y, 20, 10, mouseX-canvas.width/2+cameraX, mouseY-canvas.height/2+cameraY, 10, 2, 'bullet.png'));
+            bullets.push(new Bullet(this.x, this.y, 20, 10, mouseX-canvas.width/2+cameraX, mouseY-canvas.height/2+cameraY, 10, 2, 'bullet.png', bullets.length));
             this.curr_reload = this.reaload_time;
         }
     }
@@ -354,7 +409,7 @@ class Shotgun extends Weapon{
             let alpha = Math.atan2(mouseY-canvas.height/2+cameraY-this.y, mouseX-canvas.width/2+cameraX-this.x);
             for (let i=0; i<10; ++i){
                 let cangle = alpha + Math.random()*Math.PI/3-Math.PI/6;
-                bullets.push(new Bullet(this.x, this.y, 20, 10, this.x+Math.cos(cangle), this.y+Math.sin(cangle), 10, 2, 'bullet.png'));
+                bullets.push(new Bullet(this.x, this.y, 20, 10, this.x+Math.cos(cangle), this.y+Math.sin(cangle), 10, 2, 'bullet.png', bullets.length));
             }
             this.curr_reload = this.reaload_time;
         }
@@ -371,7 +426,7 @@ class MultiGun extends Weapon{
     }
     shoot(){
         if (this.held && this.curr_reload==0){
-            bullets.push(new MultiBullet(this.x, this.y, 20, 10, mouseX-canvas.width/2+cameraX, mouseY-canvas.height/2+cameraY, 10, 2, 'bullet.png', 25, 5));
+            bullets.push(new MultiBullet(this.x, this.y, 20, 10, mouseX-canvas.width/2+cameraX, mouseY-canvas.height/2+cameraY, 10, 2, 'bullet.png', 5, 10, bullets.length));
             this.curr_reload = this.reaload_time;
         }
     }
@@ -386,6 +441,12 @@ for (let i=1; i<nw; ++i){
 }
 
 function update() {
+    if (enemies.length == 0){
+        for (let i=0; i<ne; ++i){
+            enemies[i] = new HardEnemy(Math.random()*terrainX, Math.random()*terrainY);
+        }
+        ne+=50;
+    }
     for (let i=0; i<np; ++i){
         plats[i].move();
     }
