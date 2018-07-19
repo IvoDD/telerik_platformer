@@ -2,6 +2,21 @@
 var isMouseDown = false;
 var cameraX=terrainX/2, cameraY=terrainY/2;
 
+var keypressed=0
+var GameOver=new Image();
+GameOver.src='Game_over.png';
+var isdead = false;
+
+var medX = [],medY = [];
+var pobediLi = false;
+var a = 0;
+for(var i = 0;i < 30;i++){
+	medX[i] = 200+Math.random()*7500;
+	medY[i] = 200+Math.random()*5500;
+}
+var med = new Image();
+med.src = "medkid.png"
+
 function draw_from_camera(x, y, sx, sy){
     context.fillRect(x-cameraX+canvas.width/2-sx/2, y-cameraY+canvas.height/2-sy/2, sx, sy);
 }
@@ -106,6 +121,9 @@ class Player{
         if (this.inv == 0){
             this.health -= dmg;
             this.inv = 10;
+            if (this.health <= 0){
+                isdead = true
+            }
         }
     }
     fall(){
@@ -158,6 +176,16 @@ class Player{
                 this.step = i;
                 this.y = plats[i].y-this.sy/2-plats[i].sy/2;
             }
+        }
+        for(var i = 0;i < 30;i++){
+            if(areColliding(this.x-this.sx/2,this.y-this.sy/2,this.sx,this.sy,medX[i],medY[i],50,50)){
+                this.health+=10;
+                medX[i] = NaN;
+                medY[i] = NaN;
+            }
+        }
+        if(this.health>100){
+            this.health = 100;
         }
         cameraX = this.x;
         cameraY = this.y;
@@ -242,11 +270,169 @@ class HardEnemy extends Enemy{
         }
     }
 }
+/*class Ghost {
+     constructor(x, y, w = 40, h = 50) {
+         this.position =  {
+             x: x,
+             y: y
+         };
+         this.size = {
+             w: w,
+             h: h
+         };
+         this.health = 20;
+         this.cd = 0;
+         this.speed = 3;
+         this.img = [new Image(), new Image(), new Image(), new Image(), 
+new Image(), new Image()];
+         this.img_flip = [new Image(), new Image(), new Image(), new 
+Image(), new Image(), new Image()];
+         this.img[0].src = 'ghost0.gif'; this.img[1].src = 'ghost1.gif'; 
+this.img[2].src = 'ghost2.gif';
+         this.img[3].src = 'ghost3.gif'; this.img[4].src = 'ghost4.gif'; 
+this.img[5].src = 'ghost5.gif';
+         this.img_flip[0].src = 'ghost0_flipped.gif'; 
+this.img_flip[1].src = 'ghost1_flipped.gif'; this.img_flip[2].src = 
+'ghost2_flipped.gif';
+         this.img_flip[3].src = 'ghost3_flipped.gif'; 
+this.img_flip[4].src = 'ghost4_flipped.gif'; this.img_flip[5].src = 
+'ghost5_flipped.gif';
+         this.img_ind = 0;
+     }
+     update() {
+         let x = player.x - this.x;
+         let y = player.y - this.y;
+         let angle = Math.atan2(y, x);
+         let dist = Math.sqrt(x * x + y * y);
+         if (dist >= 100) {
+             this.x += Math.cos(angle) * 2;
+             this.y += Math.sin(angle) * 2;
+         }
+         this.attack();
+     }
+     attack() {
+         ++this.cd;
+         let x = player.x - this.x;
+         let y = player.y - this.y;
+         let dist = Math.sqrt(x * x + y * y);
+         if (dist <= 100 && this.cd % 20 == 0) {
+             if (player.health > 0) --player.health;
+             if (this.health < 20) ++this.health;
+             this.cd = 0;
+         }
+     }
+     remove() {
+         if (this.health <= 0) {
+             Object.assign(this, ghost[ghost.length - 1]);
+             ghost.pop();
+         }
+     }
+     draw() {
+         context.fillStyle = "rgb(255, 255, 0, 0.6)";
+         context.fillRect(this.x - cameraX, this.y - 
+cameraY - 15, this.sx * this.health / 20, 4);
+         context.fillStyle = "rgb(255, 0, 0, 0.6)";
+         if (player.x < this.x) {
+             drw_img(this.img[this.img_ind % 6], this.position, 
+this.size, 0);
+         } else {
+             drw_img(this.img_flip[this.img_ind % 6], this.position, 
+this.size, 0);
+         }
+         let x = player.x - this.x;
+         let y = player.y - this.y;
+         let dist = Math.sqrt(x * x + y * y);
+         if (dist <= 100) {
+             context.beginPath();
+             context.moveTo(this.x + this.sx / 2 - cameraX, 
+this.y + this.sy / 2 - cameraY);
+             context.lineTo(player.x + player.sx / 2 - 
+cameraX, player.y + player.sy / 2 - cameraY);
+             context.strokeStyle = "Purple";
+             context.lineWidth = 1;
+             context.stroke();
+             context.closePath();
+         }
+         ++this.img_ind;
+     }
+}*/
 
+class Ghost extends HardEnemy{
+    constructor(x, y){
+        super(x, y);
+        this.health=20;
+        this.sx = 80;
+        this.sy = 100;
+        this.img = [];
+        this.img_flip = [];
+        for (let i=0; i<6; ++i){
+            this.img[i] = new Image();
+            this.img_flip[i] = new Image();
+            this.img[i].src = "ghost"+i+".gif";
+            this.img_flip[i].src = "ghost"+i+"_flipped.gif";
+        }
+        this.reload_time = 10;
+        this.curr_reload = 0;
+        this.img_ind = 0;
+        this.cd = 0;
+        this.t=0;
+    }
+    update() {
+         let x = player.x - this.x;
+         let y = player.y - this.y;
+         let angle = Math.atan2(y, x);
+         let dist = Math.sqrt(x * x + y * y);
+         if (dist >= 100) {
+             this.x += Math.cos(angle) * 2;
+             this.y += Math.sin(angle) * 2;
+         }
+         this.attack();
+     }
+     attack() {
+         ++this.cd;
+         let x = player.x - this.x;
+         let y = player.y - this.y;
+         let dist = Math.sqrt(x * x + y * y);
+         if (dist <= 100 && this.cd % 20 == 0) {
+             player.hit(2);
+             if (this.health < 20) ++this.health;
+             this.cd = 0;
+         }
+     }
+    draw(){
+        context.fillStyle = "rgb(255, 255, 0, 0.6)";
+         context.fillRect(this.x - cameraX, this.y - 
+cameraY - 15, this.sx * this.health / 20, 4);
+         context.fillStyle = "rgb(255, 0, 0, 0.6)";
+         if (player.x < this.x) {
+             drw_img(this.img[this.img_ind % 6], this.x, this.y, 
+this.sx, this.sy, 0);
+         } else {
+             drw_img(this.img_flip[this.img_ind % 6], this.x, this.y, 
+this.sx, this.sy, 0);
+         }
+         let x = player.x - this.x;
+         let y = player.y - this.y;
+         let dist = Math.sqrt(x * x + y * y);
+         if (dist <= 100) {
+             context.beginPath();
+             context.moveTo(this.x + this.sx / 2 - cameraX, 
+this.y + this.sy / 2 - cameraY);
+             context.lineTo(player.x + player.sx / 2 - 
+cameraX, player.y + player.sy / 2 - cameraY);
+             context.strokeStyle = "Purple";
+             context.lineWidth = 1;
+             context.stroke();
+             context.closePath();
+         }
+        ++this.t;
+         if (this.t%10==0)++this.img_ind;
+    }
+};
 var ne = 50;
 var enemies = [];
 for (let i=0; i<ne; ++i){
-    enemies[i] = new Enemy(Math.random()*terrainX, Math.random()*terrainY);
+    enemies[i] = new Ghost(Math.random()*terrainX, Math.random()*terrainY);
 }
 
 var bullets = [];
@@ -414,9 +600,9 @@ class Shotgun extends Weapon{
 class MultiGun extends Weapon{
     constructor(x, y, held=false){
         super(x, y, held);
-        this.img.src = 'ak47.png';
-        this.img_flip.src = 'ak47_flip.png';
-        this.sy = 100;
+        this.img.src = 'gai.png';
+        this.img_flip.src = 'gai_flip.png';
+        this.sy = 50;
         this.reaload_time = 50;
     }
     shoot(){
@@ -426,33 +612,199 @@ class MultiGun extends Weapon{
         }
     }
 }
-var nw = 100;
+class knife extends Weapon{
+    constructor(x, y, held=false){
+        super(x, y, held);
+        this.img.src = 'Knife.png';
+        this.img_flip.src = 'rrr.png';
+        this.reaload_time = 20;
+    }
+
+    shoot(){
+        if (this.held && this.curr_reload==0){
+            bullets.push(new Bullet(this.x, this.y, 50, 50, mouseX-canvas.width/2+cameraX, mouseY-canvas.height/2+cameraY, 10, 2, 'rrr.png', bullets.length));
+            this.curr_reload = this.reaload_time;
+        }
+    }
+}
+class Sniper extends Weapon{
+    constructor(x, y, held = false){
+        super(x, y, held);
+        this.img.src = 'sniper.png'
+        this.img_flip.src = 'sniper_flip.png'
+        this.sx = 100 
+        this.reload_time = 50
+        this.dmg = 10
+    }
+    shoot(){
+        if (this.held && this.curr_reload==0){
+            bullets.push(new Bullet(this.x, this.y, 20, 10, mouseX-canvas.width/2+cameraX, mouseY-canvas.height/2+cameraY, 40, this.dmg, 'bullet.png', bullets.length));
+            this.curr_reload = this.reload_time;
+        }
+    }
+}
+class LaserGun extends Weapon{
+    constructor(x, y, held = false){
+        super(x, y, held);
+        this.img.src = 'ak47.png';
+        this.img_flip.src = 'ak47_flip.png';
+        this.reaload_time = 15;
+        this.curr_reload = 0;
+    }
+    shoot(){
+        if (this.held && this.curr_reload==0){
+            bullets.push(
+                new Laser_Bullet(this.x, this.y, mouseX-canvas.width/2+cameraX, mouseY-canvas.height/2+cameraY, 5, bullets.length)
+            )
+            this.curr_reload = this.reaload_time;
+        }
+    }
+}
+
+
+class Laser_Bullet{
+    constructor(x, y, targetX, targetY, dmg, ind){
+        this.x = x;
+        this.y = y;
+        this.targetX = targetX
+        this.targetY = targetY
+        let dist = d(x, y, targetX, targetY);
+        this.dmg = dmg;
+        this.ind = ind;
+    }
+    del(){
+        bullets[this.ind] = bullets[bullets.length-1];
+        bullets[this.ind].ind = this.ind;
+        bullets.pop();
+    }
+    update(){
+        if (this.x > terrainX+canvas.width ||
+            this.x < -canvas.width ||
+            this.y > terrainY+canvas.height ||
+            this.y < -canvas.height){
+            this.del();
+            return;
+        }
+    }
+    draw(){
+        context.strokeStyle = 'red';
+        context.beginPath();
+        context.moveTo(this.x-cameraX+canvas.width/2, this.y-cameraY+canvas.height/2);
+        context.lineTo(this.targetX-cameraX+canvas.width/2, this.targetY-cameraY+canvas.height/2);
+        context.stroke(); 
+    }
+}
+class FallingBullet extends Bullet{
+   
+   update(){
+      super.update();
+      this.dy+=0.3;
+   }
+}
+class GrenadeLauncher extends Weapon{
+   constructor(x, y, held=false){
+        super(x, y, held);
+        this.img.src = 'gl.png';
+        this.img_flip.src = 'gl_flip.png';
+        this.sy = 100;
+        this.reaload_time = 80;
+        this.sx = 100
+        this.sy = 50
+        this.dmg = 10
+    }
+   shoot(){
+      if (this.held && this.curr_reload==0){
+            bullets.push(new FallingBullet(this.x, this.y, 100, 100, mouseX-canvas.width/2+cameraX, mouseY-canvas.height/2+cameraY, 10, 2, 'gb.png', bullets.length));
+            this.curr_reload = this.reaload_time;
+            //gr.play()
+        }
+   }
+}
+
+class flame extends Bullet{
+    update(){
+            super.update()
+          let dist = d(player.x, player.y, this.x, this.y);
+            this.x+=this.dx;
+        this.y+=this.dy;
+        if (this.x > terrainX+canvas.width ||
+           this.x < -canvas.width ||
+           this.y > terrainY+canvas.height ||
+           this.y < -canvas.height){
+            this.del();
+            return;
+        }
+        if (dist > 150){
+                this.del();
+                return;
+            }
+         for (let i=0; i<enemies.length; ++i){
+            if (coll(this, enemies[i])){
+                enemies[i].hit(this.dmg);
+                return;
+            }
+        }
+    }
+}
+
+class Flamethrower extends Weapon{
+    constructor(x, y, held=false){
+        //if(isdead!=true&&keypressed!=1){
+        super(x, y, held);
+        this.img.src = 'flamethrower.png';
+        this.img_flip.src = 'flamethrower_flip.png';
+        this.sx = 70;
+        this.reaload_time = 0;
+        //}
+    }
+    shoot(){
+        //if(isdead!=true&&keypressed!=1){
+        if (this.held && this.curr_reload==0){
+            let alpha = Math.atan2(mouseY-canvas.height/2+cameraY-this.y, mouseX-canvas.width/2+cameraX-this.x);
+            for (let i=0; i<50; ++i){
+                let cangle = alpha + Math.random()*Math.PI/3-Math.PI/6;
+                bullets.push(new flame(this.x, this.y, 20, 20, this.x+Math.cos(cangle), this.y+Math.sin(cangle), 10, 2, 'fire.png', bullets.length));
+            }
+            this.curr_reload = this.reaload_time;
+        }
+        //}
+    }
+}
+
+var nw = 1000;
 var weapons = [];
 weapons[0] = new Weapon(player.x, player.y, true);
 for (let i=1; i<nw; ++i){
-    if (i%3==0) weapons[i] = new AK47(Math.random()*terrainX, Math.random()*terrainY);
-    if (i%3==1) weapons[i] = new Shotgun(Math.random()*terrainX, Math.random()*terrainY);
-    if (i%3==2) weapons[i] = new MultiGun(Math.random()*terrainX, Math.random()*terrainY);
+    if (i%8==0) weapons[i] = new AK47(Math.random()*terrainX, Math.random()*terrainY);
+    if (i%8==1) weapons[i] = new Shotgun(Math.random()*terrainX, Math.random()*terrainY);
+    if (i%8==2) weapons[i] = new MultiGun(Math.random()*terrainX, Math.random()*terrainY);
+    if (i%8==3) weapons[i] = new Sniper(Math.random()*terrainX, Math.random()*terrainY);
+    if (i%8==4) weapons[i] = new knife(Math.random()*terrainX, Math.random()*terrainY);
+    if (i%8==5) weapons[i] = new LaserGun(Math.random()*terrainX, Math.random()*terrainY);
+    if (i%8==6) weapons[i] = new GrenadeLauncher(Math.random()*terrainX, Math.random()*terrainY);
+    if (i%8==7) weapons[i] = new Flamethrower(Math.random()*terrainX, Math.random()*terrainY);
 }
 
 function update() {
-    if (enemies.length == 0){
-        for (let i=0; i<ne; ++i){
-            enemies[i] = new HardEnemy(Math.random()*terrainX, Math.random()*terrainY);
+    if(isdead!=true&&keypressed!=1){
+        if (enemies.length == 0){
+            for (let i=0; i<ne; ++i){
+                enemies[i] = new HardEnemy(Math.random()*terrainX, Math.random()*terrainY);
+            }
+            ne+=50;
         }
-        ne+=50;
-    }
-    for (let i=0; i<np; ++i){
-        plats[i].move();
-    }
-    player.update();
-    for (let i=0; i<enemies.length; ++i){
-        enemies[i].update();
-    }
-    weapons[0].update();
-    if (isMouseDown) weapons[0].shoot();
-    for (let i=0; i<bullets.length; ++i){
-        bullets[i].update();
+        for (let i=0; i<np; ++i){
+            plats[i].move();
+        }
+        player.update();
+        for (let i=0; i<enemies.length; ++i){
+            enemies[i].update();
+        }
+        weapons[0].update();
+        if (isMouseDown) weapons[0].shoot();
+        for (let i=0; i<bullets.length; ++i){
+            bullets[i].update();
+        }
     }
 }
 
@@ -468,11 +820,29 @@ function draw() {
         enemies[i].draw();
     }
     player.draw();
-    for (let i=0; i<nw; ++i){
-        weapons[i].draw();
+    if(isdead!=true&&keypressed!=1){
+        for (let i=0; i<nw; ++i){
+            weapons[i].draw();
+        }
     }
     for (let i=0; i<bullets.length; ++i){
         bullets[i].draw();
+    }
+    for(var i = 0;i < 30;i++){
+		context.drawImage(med,medX[i]-cameraX+canvas.width/2,medY[i]-cameraY+canvas.height/2,50,50)
+	}
+	context.fillStyle="white"
+	context.font="20px Georgia"
+	context.fillText("HP:"+player.health,canvas.width-150,canvas.height/4);
+	context.font="20px Georgia"
+	context.fillText("enemies:"+enemies.length,canvas.width-150,canvas.height-600);
+    if(keypressed==1){
+        context.fillStyle='white'
+        context.font="300px Jokerman"
+        context.fillText("PAUSE",250,550)
+    }
+    if(isdead){
+        context.drawImage(GameOver,0,0,canvas.width,canvas.height)
     }
 };
 
@@ -480,6 +850,13 @@ function keydown(key) {
     if (key==32) player.jump();
     if (key==83) player.fall();
     if (key==69) player.pickup();
+    if (key==27){
+        if (keypressed == 0){ 
+            keypressed = 1
+        }else{
+            keypressed = 0
+        }
+    }
 };
 function mousedown(){
     isMouseDown=true;
