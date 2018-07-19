@@ -291,9 +291,7 @@ class Bullet{
         }
     }
     draw(){
-        //drw_img(this.img, this.x, this.y, this.sx, this.sy, this.alpha)
-        context.fillStyle = "blue";
-        draw_from_camera(this.x, this.y, this.sx, this.sy);
+        drw_img(this.img, this.x, this.y, this.sx, this.sy, this.alpha);
     }
 }
 
@@ -313,9 +311,6 @@ class EnemyBullet extends Bullet{
             this.del();
             return;
         }
-    }
-    draw(){
-        drw_img(this.img, this.x, this.y, this.sx, this.sy, this.alpha);
     }
 }
 
